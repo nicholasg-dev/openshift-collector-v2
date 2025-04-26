@@ -17,7 +17,7 @@ COPY requirements.txt .
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install WeasyPrint dependencies
+# Install WeasyPrint dependencies with Fontconfig support
 RUN apt-get update && apt-get install -y \
     libcairo2 \
     libpango-1.0-0 \
@@ -25,14 +25,20 @@ RUN apt-get update && apt-get install -y \
     libgdk-pixbuf2.0-0 \
     libffi-dev \
     shared-mime-info \
+    fontconfig \
+    fonts-liberation \
+    fonts-dejavu \
+    && mkdir -p /var/cache/fontconfig \
+    && chmod 777 /var/cache/fontconfig \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy application code
 COPY . .
 
-# Create instance directory for persistent data
-RUN mkdir -p /app/instance/collected_data /app/instance/exports
+# Create instance directory for persistent data with proper permissions
+RUN mkdir -p /app/instance/collected_data /app/instance/exports \
+    && chmod -R 777 /app/instance
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
