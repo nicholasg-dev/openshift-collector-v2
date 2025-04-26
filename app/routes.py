@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify, request, redirect, url_for, flash, current_app
 from app.collector.openshift_collector import (
     get_cluster_info, get_nodes_info, get_basic_info, get_nodes_detailed,
     get_operators_info, get_etcd_info, get_namespaces_list, get_resources_for_namespace,
@@ -6,6 +6,7 @@ from app.collector.openshift_collector import (
     get_metrics_info, get_events_info
 )
 from app.export import _get_latest_collection_data
+from app.auth import load_auth_config, save_auth_config, test_connection, create_kubeconfig
 
 # Create a Blueprint for the main routes
 main_bp = Blueprint('main', __name__)
@@ -92,6 +93,58 @@ def collection_status():
 def export_view():
     """Render the export page."""
     return render_template('pages/export.html', title='Export')
+
+@main_bp.route('/authentication', methods=['GET', 'POST'])
+def authentication():
+    """Render the authentication page and handle form submission."""
+    error = None
+    success = None
+    connection_status = None
+    current_config = load_auth_config()
+
+    if request.method == 'POST':
+        server = request.form.get('server')
+        token = request.form.get('token')
+        verify_ssl = request.form.get('verify_ssl') == 'true'
+        test_conn = request.form.get('test_connection') == 'on'
+
+        if not server or not token:
+            error = "Server URL and token are required."
+        else:
+            # Test connection if requested
+            if test_conn:
+                connection_status = test_connection(server, token, verify_ssl)
+                if not connection_status['success']:
+                    error = f"Connection test failed: {connection_status['error']}"
+
+            # Save configuration if no error
+            if not error:
+                config = {
+                    'server': server,
+                    'token': token,
+                    'verify_ssl': str(verify_ssl).lower()
+                }
+
+                if save_auth_config(config):
+                    # Create kubeconfig file
+                    if create_kubeconfig(server, token, verify_ssl):
+                        success = "Authentication details saved successfully and kubeconfig created."
+                    else:
+                        success = "Authentication details saved, but there was an error creating the kubeconfig file."
+
+                    # Update current_config for display
+                    current_config = config
+                else:
+                    error = "Failed to save authentication details."
+
+    return render_template(
+        'pages/authentication.html',
+        title='Authentication',
+        error=error,
+        success=success,
+        connection_status=connection_status,
+        current_config=current_config
+    )
 
 # --- Legacy API endpoints for backward compatibility ---
 

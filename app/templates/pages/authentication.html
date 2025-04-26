@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">OpenShift Authentication</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <p>Provide your OpenShift authentication details to connect to your cluster. You can get these details by running <code>oc whoami --show-token</code> in your terminal.</p>
+                        <p>Example login command: <code>oc login --token=sha256~NjAvA1XvtX_q4rRKNoins6ie_UjpYZgDolai9Ppw6VM --server=https://api.cluster-example.domain.com:6443</code></p>
+                    </div>
+
+                    {% if error %}
+                    <div class="alert alert-danger">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+
+                    {% if success %}
+                    <div class="alert alert-success">
+                        {{ success }}
+                    </div>
+                    {% endif %}
+
+                    <form method="POST" action="{{ url_for('main.authentication') }}">
+                        <div class="mb-3">
+                            <label for="server" class="form-label">OpenShift API Server URL</label>
+                            <input type="text" class="form-control" id="server" name="server" placeholder="https://api.cluster-example.domain.com:6443" value="{{ current_config.get('server', '') }}" required>
+                            <div class="form-text">The URL of your OpenShift API server, including the port.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="token" class="form-label">Authentication Token</label>
+                            <input type="text" class="form-control" id="token" name="token" placeholder="sha256~..." value="{{ current_config.get('token', '') }}" required>
+                            <div class="form-text">Your OpenShift authentication token. This is sensitive information and should be kept secure.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="verify_ssl" class="form-label">Verify SSL</label>
+                            <select class="form-select" id="verify_ssl" name="verify_ssl">
+                                <option value="true" {% if current_config.get('verify_ssl', 'true') == 'true' %}selected{% endif %}>Yes (Recommended)</option>
+                                <option value="false" {% if current_config.get('verify_ssl', 'true') == 'false' %}selected{% endif %}>No (Insecure)</option>
+                            </select>
+                            <div class="form-text">Whether to verify SSL certificates when connecting to the API server.</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="test_connection" name="test_connection" checked>
+                                <label class="form-check-label" for="test_connection">
+                                    Test connection before saving
+                                </label>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Authentication Details</button>
+                    </form>
+                </div>
+            </div>
+
+            {% if connection_status %}
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">Connection Status</h5>
+                </div>
+                <div class="card-body">
+                    {% if connection_status.success %}
+                    <div class="alert alert-success">
+                        <h5>Connection Successful!</h5>
+                        <p><strong>Cluster:</strong> {{ connection_status.cluster_info.name }}</p>
+                        <p><strong>Version:</strong> {{ connection_status.cluster_info.version }}</p>
+                        <p><strong>User:</strong> {{ connection_status.user_info.name }}</p>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <h5>Connection Failed</h5>
+                        <p>{{ connection_status.error }}</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card mt-4">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Current Configuration</h5>
+                </div>
+                <div class="card-body">
+                    {% if current_config %}
+                    <table class="table">
+                        <tbody>
+                            <tr>
+                                <th>Server URL</th>
+                                <td>{{ current_config.get('server', 'Not configured') }}</td>
+                            </tr>
+                            <tr>
+                                <th>Token</th>
+                                <td>
+                                    {% if current_config.get('token') %}
+                                    <span class="text-muted">Token is set (hidden for security)</span>
+                                    {% else %}
+                                    <span class="text-danger">Not configured</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Verify SSL</th>
+                                <td>{{ 'Yes' if current_config.get('verify_ssl', 'true') == 'true' else 'No (Insecure)' }}</td>
+                            </tr>
+                            <tr>
+                                <th>Last Updated</th>
+                                <td>{{ current_config.get('last_updated', 'Never') }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        No authentication configuration found. Please provide your OpenShift authentication details above.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
