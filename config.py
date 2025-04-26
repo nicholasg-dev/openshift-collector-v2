@@ -6,7 +6,6 @@ When deployed to OpenShift, configuration is primarily through environment varia
 """
 
 import os
-import json
 
 class Config:
     """Base configuration class."""
@@ -60,10 +59,15 @@ class TestingConfig(Config):
 
 class ProductionConfig(Config):
     """Production configuration."""
-    # In production, SECRET_KEY must be set as an environment variable
+    # In production, SECRET_KEY should be set as an environment variable
+    # but we'll provide a default with a warning if it's not set
     SECRET_KEY = os.environ.get('SECRET_KEY')
     if not SECRET_KEY:
-        raise ValueError("No SECRET_KEY set for production environment")
+        import uuid
+        import logging
+        logging.warning("WARNING: No SECRET_KEY set for production environment. Using a generated key.")
+        logging.warning("This is insecure and will cause sessions to invalidate on restart.")
+        SECRET_KEY = str(uuid.uuid4())
 
     # In OpenShift, we'll use the mounted service account token by default
     # This will be overridden if KUBECONFIG_PATH is explicitly set
