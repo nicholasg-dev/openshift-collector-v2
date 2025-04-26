@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openshift-collector
+  labels:
+    app: openshift-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openshift-collector
+  template:
+    metadata:
+      labels:
+        app: openshift-collector
+    spec:
+      serviceAccountName: openshift-collector-sa
+      containers:
+      - name: openshift-collector
+        image: ${IMAGE_REPOSITORY}/openshift-collector:${IMAGE_TAG}
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: openshift-collector-secrets
+              key: secret-key
+        - name: COLLECTION_INTERVAL
+          valueFrom:
+            configMapKeyRef:
+              name: openshift-collector-config
+              key: collection-interval
+              optional: true
+        - name: PARALLEL_JOBS
+          valueFrom:
+            configMapKeyRef:
+              name: openshift-collector-config
+              key: parallel-jobs
+              optional: true
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: openshift-collector-config
+              key: log-level
+              optional: true
+        - name: NAMESPACES_TO_COLLECT
+          valueFrom:
+            configMapKeyRef:
+              name: openshift-collector-config
+              key: namespaces-to-collect
+              optional: true
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: collected-data
+          mountPath: /app/instance
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+      volumes:
+      - name: collected-data
+        persistentVolumeClaim:
+          claimName: openshift-collector-data

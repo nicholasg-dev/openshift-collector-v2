@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}Namespace Detail{% endblock %}
+{% block content %}
+<h1>Namespace: {{ namespace }}</h1>
+{% if ns_data %}
+  <pre>{{ ns_data | tojson(indent=2) }}</pre>
+{% else %}
+  <p>No data available for this namespace.</p>
+{% endif %}
+{% endblock %}

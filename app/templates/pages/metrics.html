@@ -1,0 +1,454 @@
+{% extends "base.html" %}
+
+{% block title %}Metrics - OpenShift Cluster Documentation{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Cluster Metrics</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Resource Usage Overview</h2>
+            <div class="card-actions">
+                <button id="refresh-btn" class="btn btn-primary btn-sm">Refresh</button>
+                <button id="export-btn" class="btn btn-secondary btn-sm">Export</button>
+            </div>
+        </div>
+        <div class="loading" id="metrics-loading">Loading metrics information...</div>
+        <div class="error hidden" id="metrics-error"></div>
+        <div class="hidden" id="metrics-content">
+            <div class="tabs">
+                <div class="tab active" data-tab="nodes">Node Usage</div>
+                <div class="tab" data-tab="pods">Pod Usage</div>
+                <div class="tab" data-tab="raw">Raw Data</div>
+            </div>
+            
+            <div class="tab-content active" id="nodes-tab">
+                <div class="grid grid-2">
+                    <div class="chart-container">
+                        <canvas id="cpu-usage-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="memory-usage-chart"></canvas>
+                    </div>
+                </div>
+                
+                <h3 class="mt-4">Node Resource Usage</h3>
+                <div class="table-container">
+                    <table class="data-table" id="nodes-table">
+                        <thead>
+                            <tr>
+                                <th>Node</th>
+                                <th>CPU (cores)</th>
+                                <th>CPU %</th>
+                                <th>Memory</th>
+                                <th>Memory %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="nodes-table-body">
+                            <!-- Nodes will be populated here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="pods-tab">
+                <div class="grid grid-2">
+                    <div class="chart-container">
+                        <canvas id="top-cpu-pods-chart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="top-memory-pods-chart"></canvas>
+                    </div>
+                </div>
+                
+                <h3 class="mt-4">Pod Resource Usage</h3>
+                <div class="form-group">
+                    <input type="text" id="pod-search" class="form-control" placeholder="Search pods...">
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="pods-table">
+                        <thead>
+                            <tr>
+                                <th>Namespace</th>
+                                <th>Pod</th>
+                                <th>CPU (cores)</th>
+                                <th>Memory</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pods-table-body">
+                            <!-- Pods will be populated here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="raw-tab">
+                <h3>Raw Metrics Data</h3>
+                {% if metrics %}
+                  <pre>{{ metrics | tojson(indent=2) }}</pre>
+                {% else %}
+                  <p>No metrics data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(function(t) {
+                    t.classList.remove('active');
+                });
+                
+                // Hide all tab content
+                document.querySelectorAll('.tab-content').forEach(function(content) {
+                    content.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding tab content
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId + '-tab').classList.add('active');
+            });
+        });
+        
+        // Charts
+        let cpuChart, memoryChart, topCpuPodsChart, topMemoryPodsChart;
+        let podsData = [];
+        
+        // Fetch metrics information
+        function fetchMetricsInfo() {
+            document.getElementById('metrics-loading').classList.remove('hidden');
+            document.getElementById('metrics-content').classList.add('hidden');
+            document.getElementById('metrics-error').classList.add('hidden');
+            
+            fetch('/api/v2/metrics')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch metrics information');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const nodeUsage = data.node_usage_list || [];
+                    const podUsage = data.pod_usage_list || [];
+                    
+                    // Store pods data for search functionality
+                    podsData = podUsage;
+                    
+                    // Populate nodes table
+                    const nodesTableBody = document.getElementById('nodes-table-body');
+                    nodesTableBody.innerHTML = '';
+                    
+                    if (nodeUsage.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="5">No node usage data available</td>';
+                        nodesTableBody.appendChild(row);
+                    } else {
+                        nodeUsage.forEach(node => {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${node.NAME || 'Unknown'}</td>
+                                <td>${node['CPU(cores)'] || 'Unknown'}</td>
+                                <td>${node['CPU%'] || 'Unknown'}</td>
+                                <td>${node['MEMORY(bytes)'] || 'Unknown'}</td>
+                                <td>${node['MEMORY%'] || 'Unknown'}</td>
+                            `;
+                            nodesTableBody.appendChild(row);
+                        });
+                    }
+                    
+                    // Populate pods table
+                    populatePodsTable(podUsage);
+                    
+                    // Prepare data for CPU chart
+                    const cpuLabels = [];
+                    const cpuData = [];
+                    
+                    // Prepare data for Memory chart
+                    const memLabels = [];
+                    const memData = [];
+                    
+                    nodeUsage.forEach(node => {
+                        cpuLabels.push(node.NAME);
+                        cpuData.push(parseFloat(node['CPU%'] || '0'));
+                        
+                        memLabels.push(node.NAME);
+                        memData.push(parseFloat(node['MEMORY%'] || '0'));
+                    });
+                    
+                    // Create or update CPU chart
+                    const cpuCtx = document.getElementById('cpu-usage-chart').getContext('2d');
+                    if (cpuChart) {
+                        cpuChart.data.labels = cpuLabels;
+                        cpuChart.data.datasets[0].data = cpuData;
+                        cpuChart.update();
+                    } else {
+                        cpuChart = new Chart(cpuCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: cpuLabels,
+                                datasets: [{
+                                    label: 'CPU Usage (%)',
+                                    data: cpuData,
+                                    backgroundColor: 'rgba(0, 102, 204, 0.7)',
+                                    borderColor: 'rgba(0, 102, 204, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Node CPU Usage'
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Create or update Memory chart
+                    const memCtx = document.getElementById('memory-usage-chart').getContext('2d');
+                    if (memoryChart) {
+                        memoryChart.data.labels = memLabels;
+                        memoryChart.data.datasets[0].data = memData;
+                        memoryChart.update();
+                    } else {
+                        memoryChart = new Chart(memCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: memLabels,
+                                datasets: [{
+                                    label: 'Memory Usage (%)',
+                                    data: memData,
+                                    backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                                    borderColor: 'rgba(40, 167, 69, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    y: {
+                                        beginAtZero: true,
+                                        max: 100
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Node Memory Usage'
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Prepare data for top CPU pods chart
+                    const topCpuPods = [...podUsage]
+                        .sort((a, b) => parseFloat(b['CPU(cores)'] || '0') - parseFloat(a['CPU(cores)'] || '0'))
+                        .slice(0, 10);
+                    
+                    const topCpuLabels = topCpuPods.map(pod => `${pod.NAMESPACE}/${pod.NAME}`);
+                    const topCpuData = topCpuPods.map(pod => parseFloat(pod['CPU(cores)'] || '0'));
+                    
+                    // Create or update top CPU pods chart
+                    const topCpuCtx = document.getElementById('top-cpu-pods-chart').getContext('2d');
+                    if (topCpuPodsChart) {
+                        topCpuPodsChart.data.labels = topCpuLabels;
+                        topCpuPodsChart.data.datasets[0].data = topCpuData;
+                        topCpuPodsChart.update();
+                    } else {
+                        topCpuPodsChart = new Chart(topCpuCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: topCpuLabels,
+                                datasets: [{
+                                    label: 'CPU Usage (cores)',
+                                    data: topCpuData,
+                                    backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                                    borderColor: 'rgba(220, 53, 69, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: {
+                                        ticks: {
+                                            callback: function(value) {
+                                                const label = this.getLabelForValue(value);
+                                                return label.split('/')[1]; // Show only pod name
+                                            }
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Top 10 Pods by CPU Usage'
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: function(tooltipItems) {
+                                                return tooltipItems[0].label; // Show full namespace/name
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Prepare data for top Memory pods chart
+                    const topMemPods = [...podUsage]
+                        .sort((a, b) => {
+                            const memA = parseFloat(a['MEMORY(bytes)'] || '0');
+                            const memB = parseFloat(b['MEMORY(bytes)'] || '0');
+                            return memB - memA;
+                        })
+                        .slice(0, 10);
+                    
+                    const topMemLabels = topMemPods.map(pod => `${pod.NAMESPACE}/${pod.NAME}`);
+                    const topMemData = topMemPods.map(pod => {
+                        const memStr = pod['MEMORY(bytes)'] || '0';
+                        // Convert to MB for better readability
+                        if (memStr.endsWith('Ki')) {
+                            return parseFloat(memStr.replace('Ki', '')) / 1024;
+                        } else if (memStr.endsWith('Mi')) {
+                            return parseFloat(memStr.replace('Mi', ''));
+                        } else if (memStr.endsWith('Gi')) {
+                            return parseFloat(memStr.replace('Gi', '')) * 1024;
+                        }
+                        return parseFloat(memStr);
+                    });
+                    
+                    // Create or update top Memory pods chart
+                    const topMemCtx = document.getElementById('top-memory-pods-chart').getContext('2d');
+                    if (topMemoryPodsChart) {
+                        topMemoryPodsChart.data.labels = topMemLabels;
+                        topMemoryPodsChart.data.datasets[0].data = topMemData;
+                        topMemoryPodsChart.update();
+                    } else {
+                        topMemoryPodsChart = new Chart(topMemCtx, {
+                            type: 'bar',
+                            data: {
+                                labels: topMemLabels,
+                                datasets: [{
+                                    label: 'Memory Usage (MB)',
+                                    data: topMemData,
+                                    backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                                    borderColor: 'rgba(255, 193, 7, 1)',
+                                    borderWidth: 1
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                scales: {
+                                    x: {
+                                        ticks: {
+                                            callback: function(value) {
+                                                const label = this.getLabelForValue(value);
+                                                return label.split('/')[1]; // Show only pod name
+                                            }
+                                        }
+                                    }
+                                },
+                                plugins: {
+                                    title: {
+                                        display: true,
+                                        text: 'Top 10 Pods by Memory Usage'
+                                    },
+                                    tooltip: {
+                                        callbacks: {
+                                            title: function(tooltipItems) {
+                                                return tooltipItems[0].label; // Show full namespace/name
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Raw data tab
+                    document.getElementById('raw-data').textContent = JSON.stringify(data, null, 2);
+                    
+                    document.getElementById('metrics-loading').classList.add('hidden');
+                    document.getElementById('metrics-content').classList.remove('hidden');
+                })
+                .catch(error => {
+                    document.getElementById('metrics-loading').classList.add('hidden');
+                    document.getElementById('metrics-error').textContent = error.message;
+                    document.getElementById('metrics-error').classList.remove('hidden');
+                    console.error('Error fetching metrics info:', error);
+                });
+        }
+        
+        // Populate pods table
+        function populatePodsTable(pods) {
+            const podsTableBody = document.getElementById('pods-table-body');
+            podsTableBody.innerHTML = '';
+            
+            if (pods.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="4">No pod usage data available</td>';
+                podsTableBody.appendChild(row);
+            } else {
+                pods.forEach(pod => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${pod.NAMESPACE || 'Unknown'}</td>
+                        <td>${pod.NAME || 'Unknown'}</td>
+                        <td>${pod['CPU(cores)'] || 'Unknown'}</td>
+                        <td>${pod['MEMORY(bytes)'] || 'Unknown'}</td>
+                    `;
+                    podsTableBody.appendChild(row);
+                });
+            }
+        }
+        
+        // Pod search functionality
+        document.getElementById('pod-search').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const filteredPods = podsData.filter(pod => {
+                const namespace = (pod.NAMESPACE || '').toLowerCase();
+                const name = (pod.NAME || '').toLowerCase();
+                return namespace.includes(searchTerm) || name.includes(searchTerm);
+            });
+            populatePodsTable(filteredPods);
+        });
+        
+        // Initial fetch
+        fetchMetricsInfo();
+        
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', fetchMetricsInfo);
+        
+        // Export button
+        document.getElementById('export-btn').addEventListener('click', function() {
+            window.location.href = '/api/v2/export/metrics?format=json';
+        });
+    });
+</script>
+{% endblock %}

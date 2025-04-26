@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# Flask
+instance/config.py
+.env
+.flaskenv
+
+# Application specific
+instance/collected_data/
+instance/exports/
+instance/collection_history.json
+instance/exports_history.json
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# OpenShift/Kubernetes
+kubeconfig
+*.kubeconfig
+
+# Logs
+logs/
+*.log
+
+# Local development
+.coverage
+htmlcov/
+.pytest_cache/

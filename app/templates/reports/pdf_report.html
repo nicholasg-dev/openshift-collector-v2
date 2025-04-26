@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        /* PDF Report Styles */
+        @page {
+            size: A4;
+            margin: 2cm;
+            @top-center {
+                content: "{{ title }}";
+                font-family: Arial, sans-serif;
+                font-size: 10pt;
+            }
+            @bottom-center {
+                content: "Page " counter(page) " of " counter(pages);
+                font-family: Arial, sans-serif;
+                font-size: 10pt;
+            }
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+        }
+        
+        h1 {
+            font-size: 24pt;
+            color: #0066cc;
+            margin-bottom: 0.5cm;
+            border-bottom: 1px solid #0066cc;
+            padding-bottom: 0.2cm;
+        }
+        
+        h2 {
+            font-size: 18pt;
+            color: #0066cc;
+            margin-top: 1cm;
+            margin-bottom: 0.3cm;
+        }
+        
+        h3 {
+            font-size: 14pt;
+            color: #0066cc;
+            margin-top: 0.8cm;
+            margin-bottom: 0.2cm;
+        }
+        
+        h4 {
+            font-size: 12pt;
+            color: #0066cc;
+            margin-top: 0.5cm;
+            margin-bottom: 0.2cm;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0.5cm 0;
+        }
+        
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.2cm;
+            text-align: left;
+            font-size: 10pt;
+        }
+        
+        th {
+            background-color: #0066cc;
+            color: white;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .info-item {
+            margin-bottom: 0.3cm;
+        }
+        
+        .label {
+            font-weight: bold;
+            color: #0066cc;
+        }
+        
+        .timestamp {
+            font-size: 10pt;
+            color: #666;
+            margin-bottom: 1cm;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .chart-container {
+            width: 100%;
+            height: 300px;
+            margin: 0.5cm 0;
+        }
+        
+        pre {
+            font-family: Courier, monospace;
+            font-size: 9pt;
+            background-color: #f5f5f5;
+            padding: 0.3cm;
+            border: 1px solid #ddd;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        .toc {
+            margin: 1cm 0;
+        }
+        
+        .toc-item {
+            margin-bottom: 0.2cm;
+        }
+        
+        .toc-level-1 {
+            margin-left: 0;
+            font-weight: bold;
+        }
+        
+        .toc-level-2 {
+            margin-left: 0.5cm;
+        }
+        
+        .toc-level-3 {
+            margin-left: 1cm;
+            font-size: 10pt;
+        }
+    </style>
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    
+    {% if timestamp %}
+    <div class="timestamp">
+        Generated on: {{ timestamp.strftime('%Y-%m-%d %H:%M:%S') }}
+    </div>
+    {% endif %}
+    
+    <!-- Table of Contents -->
+    <div class="toc">
+        <h2>Table of Contents</h2>
+        <div class="toc-item toc-level-1">1. Cluster Overview</div>
+        {% if data.get('basic_info') %}
+        <div class="toc-item toc-level-2">1.1. Basic Information</div>
+        {% endif %}
+        {% if data.get('operators') %}
+        <div class="toc-item toc-level-2">1.2. Operators</div>
+        {% endif %}
+        {% if data.get('etcd') %}
+        <div class="toc-item toc-level-2">1.3. ETCD</div>
+        {% endif %}
+        
+        {% if data.get('nodes') %}
+        <div class="toc-item toc-level-1">2. Nodes</div>
+        {% endif %}
+        
+        {% if data.get('network') %}
+        <div class="toc-item toc-level-1">3. Network</div>
+        {% endif %}
+        
+        {% if data.get('storage') %}
+        <div class="toc-item toc-level-1">4. Storage</div>
+        {% endif %}
+        
+        {% if data.get('security') %}
+        <div class="toc-item toc-level-1">5. Security</div>
+        {% endif %}
+        
+        {% if data.get('metrics') %}
+        <div class="toc-item toc-level-1">6. Metrics</div>
+        {% endif %}
+        
+        {% if data.get('events') %}
+        <div class="toc-item toc-level-1">7. Events</div>
+        {% endif %}
+        
+        {% if data.get('namespaces') %}
+        <div class="toc-item toc-level-1">8. Namespaces</div>
+        {% endif %}
+    </div>
+    
+    <!-- Cluster Overview -->
+    <div class="page-break"></div>
+    <h2>1. Cluster Overview</h2>
+    
+    {% if data.get('basic_info') %}
+    <h3>1.1. Basic Information</h3>
+    {% set basic_info = data.get('basic_info', {}) %}
+    {% set summary = basic_info.get('summary', {}) %}
+    
+    <div class="info-item">
+        <span class="label">OpenShift Version:</span>
+        <span class="value">{{ summary.get('openshiftVersion', 'N/A') }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">Cluster ID:</span>
+        <span class="value">{{ summary.get('clusterID', 'N/A') }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">Infrastructure Name:</span>
+        <span class="value">{{ summary.get('infraName', 'N/A') }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">API Server URL:</span>
+        <span class="value">{{ summary.get('apiServerURL', 'N/A') }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">Platform:</span>
+        <span class="value">{{ summary.get('platform', 'N/A') }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">Available:</span>
+        <span class="value">{{ summary.get('available', 'N/A') }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">Progressing:</span>
+        <span class="value">{{ 'Yes' if summary.get('progressing') else 'No' }}</span>
+    </div>
+    <div class="info-item">
+        <span class="label">Degraded:</span>
+        <span class="value">{{ 'Yes' if summary.get('degraded') else 'No' }}</span>
+    </div>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ basic_info | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    {% if data.get('operators') %}
+    <h3>1.2. Operators</h3>
+    {% set operators = data.get('operators', {}) %}
+    {% set operator_list = operators.get('clusteroperators_list', []) %}
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Version</th>
+                <th>Available</th>
+                <th>Progressing</th>
+                <th>Degraded</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for operator in operator_list %}
+            <tr>
+                <td>{{ operator.get('NAME', 'N/A') }}</td>
+                <td>{{ operator.get('VERSION', 'N/A') }}</td>
+                <td>{{ operator.get('AVAILABLE', 'N/A') }}</td>
+                <td>{{ operator.get('PROGRESSING', 'N/A') }}</td>
+                <td>{{ operator.get('DEGRADED', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ operators | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    {% if data.get('etcd') %}
+    <h3>1.3. ETCD</h3>
+    {% set etcd = data.get('etcd', {}) %}
+    
+    <div class="info-item">
+        <span class="label">Health:</span>
+        <pre>{{ etcd.get('health_raw', 'N/A') }}</pre>
+    </div>
+    
+    <div class="info-item">
+        <span class="label">Members:</span>
+        <pre>{{ etcd.get('members_raw', 'N/A') }}</pre>
+    </div>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ etcd | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Nodes -->
+    {% if data.get('nodes') %}
+    <div class="page-break"></div>
+    <h2>2. Nodes</h2>
+    {% set nodes = data.get('nodes', {}) %}
+    {% set node_list = nodes.get('list', []) %}
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Roles</th>
+                <th>Status</th>
+                <th>CPU</th>
+                <th>Memory</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for node in node_list %}
+            <tr>
+                <td>{{ node.get('NAME', 'N/A') }}</td>
+                <td>{{ node.get('ROLES', 'N/A') }}</td>
+                <td>{{ node.get('STATUS', 'N/A') }}</td>
+                <td>{{ node.get('CPU', 'N/A') }}</td>
+                <td>{{ node.get('MEMORY', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ nodes | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Network -->
+    {% if data.get('network') %}
+    <div class="page-break"></div>
+    <h2>3. Network</h2>
+    {% set network = data.get('network', {}) %}
+    {% set summary = network.get('summary', {}) %}
+    
+    <div class="info-item">
+        <span class="label">Network Type:</span>
+        <span class="value">{{ summary.get('networkType', 'N/A') }}</span>
+    </div>
+    
+    <div class="info-item">
+        <span class="label">Service Network:</span>
+        <span class="value">
+            {% if summary.get('serviceNetwork') is iterable and summary.get('serviceNetwork') is not string %}
+                {{ summary.get('serviceNetwork') | join(', ') }}
+            {% else %}
+                {{ summary.get('serviceNetwork', 'N/A') }}
+            {% endif %}
+        </span>
+    </div>
+    
+    <div class="info-item">
+        <span class="label">Cluster Network:</span>
+        <span class="value">
+            {% if summary.get('clusterNetwork') is iterable and summary.get('clusterNetwork') is not string %}
+                {% for network in summary.get('clusterNetwork', []) %}
+                    {{ network.get('cidr', '') }} (hostPrefix: {{ network.get('hostPrefix', '') }}){% if not loop.last %}, {% endif %}
+                {% endfor %}
+            {% else %}
+                {{ summary.get('clusterNetwork', 'N/A') }}
+            {% endif %}
+        </span>
+    </div>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ network | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Storage -->
+    {% if data.get('storage') %}
+    <div class="page-break"></div>
+    <h2>4. Storage</h2>
+    {% set storage = data.get('storage', {}) %}
+    {% set pvc_list = storage.get('pvc_summary_list', []) %}
+    
+    <h3>4.1. Persistent Volume Claims</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Namespace</th>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Volume</th>
+                <th>Capacity</th>
+                <th>Access Modes</th>
+                <th>Storage Class</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pvc in pvc_list %}
+            <tr>
+                <td>{{ pvc.get('NAMESPACE', 'N/A') }}</td>
+                <td>{{ pvc.get('NAME', 'N/A') }}</td>
+                <td>{{ pvc.get('STATUS', 'N/A') }}</td>
+                <td>{{ pvc.get('VOLUME', 'N/A') }}</td>
+                <td>{{ pvc.get('CAPACITY', 'N/A') }}</td>
+                <td>{{ pvc.get('ACCESS MODES', 'N/A') }}</td>
+                <td>{{ pvc.get('STORAGECLASS', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ storage | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Security -->
+    {% if data.get('security') %}
+    <div class="page-break"></div>
+    <h2>5. Security</h2>
+    {% set security = data.get('security', {}) %}
+    
+    <div class="info-item">
+        <span class="label">Certificate Expiry:</span>
+        <pre>{{ security.get('cert_expiry_raw', 'N/A') }}</pre>
+    </div>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ security | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Metrics -->
+    {% if data.get('metrics') %}
+    <div class="page-break"></div>
+    <h2>6. Metrics</h2>
+    {% set metrics = data.get('metrics', {}) %}
+    {% set node_usage = metrics.get('node_usage_list', []) %}
+    {% set pod_usage = metrics.get('pod_usage_list', []) %}
+    
+    <h3>6.1. Node Resource Usage</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Node</th>
+                <th>CPU (cores)</th>
+                <th>CPU %</th>
+                <th>Memory</th>
+                <th>Memory %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for node in node_usage %}
+            <tr>
+                <td>{{ node.get('NAME', 'N/A') }}</td>
+                <td>{{ node.get('CPU(cores)', 'N/A') }}</td>
+                <td>{{ node.get('CPU%', 'N/A') }}</td>
+                <td>{{ node.get('MEMORY(bytes)', 'N/A') }}</td>
+                <td>{{ node.get('MEMORY%', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h3>6.2. Top Pod Resource Usage</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Namespace</th>
+                <th>Pod</th>
+                <th>CPU (cores)</th>
+                <th>Memory</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pod in pod_usage[:10] %}
+            <tr>
+                <td>{{ pod.get('NAMESPACE', 'N/A') }}</td>
+                <td>{{ pod.get('NAME', 'N/A') }}</td>
+                <td>{{ pod.get('CPU(cores)', 'N/A') }}</td>
+                <td>{{ pod.get('MEMORY(bytes)', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ metrics | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Events -->
+    {% if data.get('events') %}
+    <div class="page-break"></div>
+    <h2>7. Events</h2>
+    {% set events = data.get('events', {}) %}
+    {% set recent_events = events.get('recent_events_list', []) %}
+    {% set warning_events = events.get('warning_events_list', []) %}
+    
+    <h3>7.1. Recent Events</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Type</th>
+                <th>Reason</th>
+                <th>Object</th>
+                <th>Message</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in recent_events %}
+            <tr>
+                <td>{{ event.get('TYPE', 'N/A') }}</td>
+                <td>{{ event.get('REASON', 'N/A') }}</td>
+                <td>{{ event.get('OBJECT', 'N/A') }}</td>
+                <td>{{ event.get('MESSAGE', 'N/A') }}</td>
+                <td>{{ event.get('LASTSEEN', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <h3>7.2. Warning Events</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Reason</th>
+                <th>Object</th>
+                <th>Message</th>
+                <th>Time</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for event in warning_events %}
+            <tr>
+                <td>{{ event.get('REASON', 'N/A') }}</td>
+                <td>{{ event.get('OBJECT', 'N/A') }}</td>
+                <td>{{ event.get('MESSAGE', 'N/A') }}</td>
+                <td>{{ event.get('LASTSEEN', 'N/A') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ events | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+    
+    <!-- Namespaces -->
+    {% if data.get('namespaces') %}
+    <div class="page-break"></div>
+    <h2>8. Namespaces</h2>
+    {% set namespaces = data.get('namespaces', []) %}
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Namespace</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for namespace in namespaces %}
+            <tr>
+                <td>{{ namespace }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    {% if include_raw_data %}
+    <h4>Raw Data</h4>
+    <pre>{{ namespaces | tojson(indent=2) }}</pre>
+    {% endif %}
+    {% endif %}
+</body>
+</html>

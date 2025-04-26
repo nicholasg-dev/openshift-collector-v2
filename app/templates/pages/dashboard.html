@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - OpenShift Cluster Documentation{% endblock %}
+
+{% block content %}
+<section>
+    <h1>OpenShift Cluster Dashboard</h1>
+    
+    <div class="grid grid-2">
+        <!-- Cluster Overview Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Cluster Overview</h2>
+                <div class="card-actions">
+                    <a href="{{ url_for('main.cluster_overview') }}" class="btn btn-primary btn-sm">Details</a>
+                </div>
+            </div>
+            <div class="loading" id="cluster-info-loading">Loading cluster information...</div>
+            <div class="error hidden" id="cluster-info-error"></div>
+            <div class="info-card hidden" id="cluster-info">
+                <div class="info-item">
+                    <span class="label">Version:</span>
+                    <span class="value" id="cluster-version">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Platform:</span>
+                    <span class="value" id="cluster-platform">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Infrastructure Name:</span>
+                    <span class="value" id="infra-name">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Control Plane Topology:</span>
+                    <span class="value" id="control-plane-topology">-</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">Infrastructure Topology:</span>
+                    <span class="value" id="infra-topology">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Cluster Health Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Cluster Health</h2>
+                <div class="card-actions">
+                    <a href="{{ url_for('main.operators_view') }}" class="btn btn-primary btn-sm">Details</a>
+                </div>
+            </div>
+            <div class="loading" id="operators-loading">Loading operators information...</div>
+            <div class="error hidden" id="operators-error"></div>
+            <div class="hidden" id="operators-info">
+                <div class="chart-container">
+                    <canvas id="operators-chart"></canvas>
+                </div>
+                <div class="text-center mt-3">
+                    <span class="badge badge-success mr-2">Available: <span id="operators-available">0</span></span>
+                    <span class="badge badge-warning mr-2">Progressing: <span id="operators-progressing">0</span></span>
+                    <span class="badge badge-danger">Degraded: <span id="operators-degraded">0</span></span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Nodes Overview -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Nodes Overview</h2>
+            <div class="card-actions">
+                <a href="{{ url_for('main.nodes_view') }}" class="btn btn-primary btn-sm">Details</a>
+            </div>
+        </div>
+        <div class="loading" id="nodes-info-loading">Loading nodes information...</div>
+        <div class="error hidden" id="nodes-info-error"></div>
+        <div class="table-container hidden" id="nodes-table-container">
+            <table class="data-table" id="nodes-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>OS</th>
+                        <th>Architecture</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                    </tr>
+                </thead>
+                <tbody id="nodes-table-body">
+                    <!-- Nodes will be populated here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Resource Usage -->
+    <div class="grid grid-2">
+        <!-- CPU Usage -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">CPU Usage</h2>
+                <div class="card-actions">
+                    <a href="{{ url_for('main.metrics_view') }}" class="btn btn-primary btn-sm">Details</a>
+                </div>
+            </div>
+            <div class="loading" id="cpu-metrics-loading">Loading CPU metrics...</div>
+            <div class="error hidden" id="cpu-metrics-error"></div>
+            <div class="chart-container hidden" id="cpu-chart-container">
+                <canvas id="cpu-usage-chart"></canvas>
+            </div>
+        </div>
+        
+        <!-- Memory Usage -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Memory Usage</h2>
+                <div class="card-actions">
+                    <a href="{{ url_for('main.metrics_view') }}" class="btn btn-primary btn-sm">Details</a>
+                </div>
+            </div>
+            <div class="loading" id="memory-metrics-loading">Loading memory metrics...</div>
+            <div class="error hidden" id="memory-metrics-error"></div>
+            <div class="chart-container hidden" id="memory-chart-container">
+                <canvas id="memory-usage-chart"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Events -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Recent Events</h2>
+            <div class="card-actions">
+                <a href="{{ url_for('main.events_view') }}" class="btn btn-primary btn-sm">View All</a>
+            </div>
+        </div>
+        <div class="loading" id="events-loading">Loading recent events...</div>
+        <div class="error hidden" id="events-error"></div>
+        <div class="table-container hidden" id="events-table-container">
+            <table class="data-table" id="events-table">
+                <thead>
+                    <tr>
+                        <th>Namespace</th>
+                        <th>Type</th>
+                        <th>Reason</th>
+                        <th>Object</th>
+                        <th>Message</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="events-table-body">
+                    <!-- Events will be populated here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Quick Actions -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Quick Actions</h2>
+        </div>
+        <div class="grid grid-4">
+            <a href="{{ url_for('main.export_view') }}" class="btn btn-primary">Export Report</a>
+            <a href="{{ url_for('main.collection_status') }}" class="btn btn-primary">Collection Status</a>
+            <button id="run-collection-btn" class="btn btn-success">Run Collection Now</button>
+            <a href="{{ url_for('main.namespaces_view') }}" class="btn btn-primary">Browse Namespaces</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch cluster information
+        fetch('/api/v2/cluster')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch cluster information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const summary = data.summary || {};
+                document.getElementById('cluster-version').textContent = summary.openshiftVersion || 'Unknown';
+                document.getElementById('cluster-platform').textContent = summary.platform || 'Unknown';
+                document.getElementById('infra-name').textContent = summary.infraName || 'Unknown';
+                document.getElementById('control-plane-topology').textContent = data.infrastructure_yaml?.status?.controlPlaneTopology || 'Unknown';
+                document.getElementById('infra-topology').textContent = data.infrastructure_yaml?.status?.infrastructureTopology || 'Unknown';
+                
+                document.getElementById('cluster-info-loading').classList.add('hidden');
+                document.getElementById('cluster-info').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('cluster-info-loading').classList.add('hidden');
+                document.getElementById('cluster-info-error').textContent = error.message;
+                document.getElementById('cluster-info-error').classList.remove('hidden');
+                console.error('Error fetching cluster info:', error);
+            });
+
+        // Fetch nodes information
+        fetch('/api/v2/nodes')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch nodes information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const tableBody = document.getElementById('nodes-table-body');
+                const nodesList = data.list || [];
+                
+                if (nodesList.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td colspan="7">No nodes found</td>';
+                    tableBody.appendChild(row);
+                } else {
+                    nodesList.forEach(node => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${node.NAME || 'Unknown'}</td>
+                            <td>${node.ROLES || 'Unknown'}</td>
+                            <td>${node.STATUS || 'Unknown'}</td>
+                            <td>${node.OS || 'Unknown'}</td>
+                            <td>${node.ARCHITECTURE || 'Unknown'}</td>
+                            <td>${node.CPU || 'Unknown'}</td>
+                            <td>${node.MEMORY || 'Unknown'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                
+                document.getElementById('nodes-info-loading').classList.add('hidden');
+                document.getElementById('nodes-table-container').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('nodes-info-loading').classList.add('hidden');
+                document.getElementById('nodes-info-error').textContent = error.message;
+                document.getElementById('nodes-info-error').classList.remove('hidden');
+                console.error('Error fetching nodes info:', error);
+            });
+
+        // Fetch operators information
+        fetch('/api/v2/operators')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch operators information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const operatorsList = data.clusteroperators_list || [];
+                let available = 0;
+                let progressing = 0;
+                let degraded = 0;
+                
+                operatorsList.forEach(operator => {
+                    if (operator.AVAILABLE === 'True') available++;
+                    if (operator.PROGRESSING === 'True') progressing++;
+                    if (operator.DEGRADED === 'True') degraded++;
+                });
+                
+                document.getElementById('operators-available').textContent = available;
+                document.getElementById('operators-progressing').textContent = progressing;
+                document.getElementById('operators-degraded').textContent = degraded;
+                
+                // Create operators chart
+                const ctx = document.getElementById('operators-chart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Available', 'Progressing', 'Degraded'],
+                        datasets: [{
+                            data: [available, progressing, degraded],
+                            backgroundColor: [
+                                '#28a745',  // success
+                                '#ffc107',  // warning
+                                '#dc3545'   // danger
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Cluster Operators Status'
+                            }
+                        }
+                    }
+                });
+                
+                document.getElementById('operators-loading').classList.add('hidden');
+                document.getElementById('operators-info').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('operators-loading').classList.add('hidden');
+                document.getElementById('operators-error').textContent = error.message;
+                document.getElementById('operators-error').classList.remove('hidden');
+                console.error('Error fetching operators info:', error);
+            });
+
+        // Fetch metrics information
+        fetch('/api/v2/metrics')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch metrics information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const nodeUsage = data.node_usage_list || [];
+                
+                // Prepare data for CPU chart
+                const cpuLabels = [];
+                const cpuData = [];
+                
+                // Prepare data for Memory chart
+                const memLabels = [];
+                const memData = [];
+                
+                nodeUsage.forEach(node => {
+                    cpuLabels.push(node.NAME);
+                    cpuData.push(parseFloat(node['CPU%'] || '0'));
+                    
+                    memLabels.push(node.NAME);
+                    memData.push(parseFloat(node['MEMORY%'] || '0'));
+                });
+                
+                // Create CPU chart
+                const cpuCtx = document.getElementById('cpu-usage-chart').getContext('2d');
+                new Chart(cpuCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: cpuLabels,
+                        datasets: [{
+                            label: 'CPU Usage (%)',
+                            data: cpuData,
+                            backgroundColor: 'rgba(0, 102, 204, 0.7)',
+                            borderColor: 'rgba(0, 102, 204, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+                
+                // Create Memory chart
+                const memCtx = document.getElementById('memory-usage-chart').getContext('2d');
+                new Chart(memCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: memLabels,
+                        datasets: [{
+                            label: 'Memory Usage (%)',
+                            data: memData,
+                            backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                            borderColor: 'rgba(40, 167, 69, 1)',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+                
+                document.getElementById('cpu-metrics-loading').classList.add('hidden');
+                document.getElementById('cpu-chart-container').classList.remove('hidden');
+                
+                document.getElementById('memory-metrics-loading').classList.add('hidden');
+                document.getElementById('memory-chart-container').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('cpu-metrics-loading').classList.add('hidden');
+                document.getElementById('cpu-metrics-error').textContent = error.message;
+                document.getElementById('cpu-metrics-error').classList.remove('hidden');
+                
+                document.getElementById('memory-metrics-loading').classList.add('hidden');
+                document.getElementById('memory-metrics-error').textContent = error.message;
+                document.getElementById('memory-metrics-error').classList.remove('hidden');
+                
+                console.error('Error fetching metrics info:', error);
+            });
+
+        // Fetch events information
+        fetch('/api/v2/events')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch events information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const recentEvents = data.recent_events_list || [];
+                const tableBody = document.getElementById('events-table-body');
+                
+                if (recentEvents.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td colspan="6">No recent events found</td>';
+                    tableBody.appendChild(row);
+                } else {
+                    recentEvents.forEach(event => {
+                        const row = document.createElement('tr');
+                        const eventTime = new Date(event.LASTSEEN || '').toLocaleString();
+                        
+                        row.innerHTML = `
+                            <td>${event.NAMESPACE || 'Unknown'}</td>
+                            <td>${event.TYPE || 'Unknown'}</td>
+                            <td>${event.REASON || 'Unknown'}</td>
+                            <td>${event.OBJECT || 'Unknown'}</td>
+                            <td>${event.MESSAGE || 'Unknown'}</td>
+                            <td>${eventTime}</td>
+                        `;
+                        
+                        // Add class for warning events
+                        if (event.TYPE === 'Warning') {
+                            row.classList.add('warning-event');
+                        }
+                        
+                        tableBody.appendChild(row);
+                    });
+                }
+                
+                document.getElementById('events-loading').classList.add('hidden');
+                document.getElementById('events-table-container').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('events-loading').classList.add('hidden');
+                document.getElementById('events-error').textContent = error.message;
+                document.getElementById('events-error').classList.remove('hidden');
+                console.error('Error fetching events info:', error);
+            });
+
+        // Run collection button
+        document.getElementById('run-collection-btn').addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = 'Running Collection...';
+            
+            fetch('/api/v2/run-collection', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Collection started successfully!');
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 5000);
+                    } else {
+                        alert('Error: ' + data.error);
+                        this.disabled = false;
+                        this.textContent = 'Run Collection Now';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting collection:', error);
+                    alert('Error starting collection. See console for details.');
+                    this.disabled = false;
+                    this.textContent = 'Run Collection Now';
+                });
+        });
+    });
+</script>
+{% endblock %}

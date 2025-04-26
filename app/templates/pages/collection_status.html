@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+
+{% block title %}Collection Status - OpenShift Cluster Documentation{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Collection Status</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Collection Status</h2>
+            <div class="card-actions">
+                <button id="refresh-btn" class="btn btn-primary btn-sm">Refresh</button>
+                <button id="run-collection-btn" class="btn btn-success btn-sm">Run Collection Now</button>
+            </div>
+        </div>
+        <div class="loading" id="status-loading">Loading collection status...</div>
+        <div class="error hidden" id="status-error"></div>
+        <div class="hidden" id="status-content">
+            <div class="grid grid-3">
+                <div class="card">
+                    <h3>Current Status</h3>
+                    <div class="info-item">
+                        <span class="label">Status:</span>
+                        <span class="value">
+                            <span id="status-indicator" class="status-indicator"></span>
+                            <span id="current-status">Unknown</span>
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Last Collection:</span>
+                        <span class="value" id="last-collection">Unknown</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Next Collection:</span>
+                        <span class="value" id="next-collection">Unknown</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>Collection Schedule</h3>
+                    <div class="info-item">
+                        <span class="label">Interval:</span>
+                        <span class="value" id="collection-interval">Unknown</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Schedule:</span>
+                        <span class="value" id="collection-schedule">Unknown</span>
+                    </div>
+                    <div class="form-group mt-3">
+                        <label class="form-label" for="interval-select">Change Interval:</label>
+                        <select id="interval-select" class="form-control">
+                            <option value="3600">Hourly</option>
+                            <option value="14400">Every 4 hours</option>
+                            <option value="43200">Every 12 hours</option>
+                            <option value="86400">Daily</option>
+                            <option value="604800">Weekly</option>
+                        </select>
+                    </div>
+                    <button id="update-interval-btn" class="btn btn-primary mt-2">Update Interval</button>
+                </div>
+                
+                <div class="card">
+                    <h3>Collection Stats</h3>
+                    <div class="info-item">
+                        <span class="label">Total Collections:</span>
+                        <span class="value" id="total-collections">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Successful:</span>
+                        <span class="value" id="successful-collections">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Failed:</span>
+                        <span class="value" id="failed-collections">0</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Average Duration:</span>
+                        <span class="value" id="avg-duration">0s</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <h3>Collection History</h3>
+                <div class="table-container">
+                    <table class="data-table" id="history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Status</th>
+                                <th>Duration</th>
+                                <th>Items Collected</th>
+                                <th>Details</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <!-- History will be populated here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h2 class="card-title">Collection Configuration</h2>
+        </div>
+        <div class="tabs">
+            <div class="tab active" data-tab="general">General</div>
+            <div class="tab" data-tab="advanced">Advanced</div>
+        </div>
+        
+        <div class="tab-content active" id="general-tab">
+            <form id="general-config-form">
+                <div class="grid grid-2">
+                    <div class="form-group">
+                        <label class="form-label" for="kubeconfig-path">Kubeconfig Path:</label>
+                        <input type="text" id="kubeconfig-path" name="kubeconfig_path" class="form-control">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label" for="parallel-jobs">Parallel Jobs:</label>
+                        <input type="number" id="parallel-jobs" name="parallel_jobs" class="form-control" min="1" max="16">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="enable-cloud-collection" name="enable_cloud_collection">
+                        Enable Cloud Provider Collection
+                    </label>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="enable-ssh-collection" name="enable_ssh_collection">
+                        Enable SSH Collection
+                    </label>
+                </div>
+                
+                <button type="button" id="save-general-config-btn" class="btn btn-primary">Save Configuration</button>
+            </form>
+        </div>
+        
+        <div class="tab-content" id="advanced-tab">
+            <form id="advanced-config-form">
+                <div class="form-group">
+                    <label class="form-label" for="collection-timeout">Collection Timeout (seconds):</label>
+                    <input type="number" id="collection-timeout" name="collection_timeout" class="form-control" min="30">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="retry-attempts">Retry Attempts:</label>
+                    <input type="number" id="retry-attempts" name="retry_attempts" class="form-control" min="0" max="5">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="retry-delay">Retry Delay (seconds):</label>
+                    <input type="number" id="retry-delay" name="retry_delay" class="form-control" min="1">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="log-level">Log Level:</label>
+                    <select id="log-level" name="log_level" class="form-control">
+                        <option value="DEBUG">DEBUG</option>
+                        <option value="INFO">INFO</option>
+                        <option value="WARNING">WARNING</option>
+                        <option value="ERROR">ERROR</option>
+                    </select>
+                </div>
+                
+                <button type="button" id="save-advanced-config-btn" class="btn btn-primary">Save Configuration</button>
+            </form>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(function(t) {
+                    t.classList.remove('active');
+                });
+                
+                // Hide all tab content
+                document.querySelectorAll('.tab-content').forEach(function(content) {
+                    content.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding tab content
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId + '-tab').classList.add('active');
+            });
+        });
+        
+        // Fetch collection status
+        function fetchCollectionStatus() {
+            document.getElementById('status-loading').classList.remove('hidden');
+            document.getElementById('status-content').classList.add('hidden');
+            document.getElementById('status-error').classList.add('hidden');
+            
+            fetch('/api/v2/collection-status')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch collection status');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update status indicator
+                    const statusIndicator = document.getElementById('status-indicator');
+                    const currentStatus = document.getElementById('current-status');
+                    
+                    if (data.status === 'running') {
+                        statusIndicator.className = 'status-indicator status-running';
+                        currentStatus.textContent = 'Running';
+                    } else if (data.status === 'idle') {
+                        statusIndicator.className = 'status-indicator status-idle';
+                        currentStatus.textContent = 'Idle';
+                    } else if (data.status === 'error') {
+                        statusIndicator.className = 'status-indicator status-error';
+                        currentStatus.textContent = 'Error';
+                    }
+                    
+                    // Update collection times
+                    document.getElementById('last-collection').textContent = data.last_collection ? 
+                        new Date(data.last_collection).toLocaleString() : 'Never';
+                    
+                    document.getElementById('next-collection').textContent = data.next_collection ? 
+                        new Date(data.next_collection).toLocaleString() : 'Not scheduled';
+                    
+                    // Update collection schedule
+                    document.getElementById('collection-interval').textContent = formatInterval(data.interval);
+                    document.getElementById('collection-schedule').textContent = data.schedule || 'Not configured';
+                    
+                    // Update interval select
+                    document.getElementById('interval-select').value = data.interval;
+                    
+                    // Update collection stats
+                    document.getElementById('total-collections').textContent = data.stats?.total || 0;
+                    document.getElementById('successful-collections').textContent = data.stats?.successful || 0;
+                    document.getElementById('failed-collections').textContent = data.stats?.failed || 0;
+                    document.getElementById('avg-duration').textContent = formatDuration(data.stats?.avg_duration || 0);
+                    
+                    // Populate history table
+                    const historyTableBody = document.getElementById('history-table-body');
+                    historyTableBody.innerHTML = '';
+                    
+                    if (!data.history || data.history.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="5">No collection history available</td>';
+                        historyTableBody.appendChild(row);
+                    } else {
+                        data.history.forEach(item => {
+                            const row = document.createElement('tr');
+                            const date = new Date(item.timestamp).toLocaleString();
+                            
+                            let statusClass = '';
+                            if (item.status === 'success') {
+                                statusClass = 'text-success';
+                            } else if (item.status === 'error') {
+                                statusClass = 'text-danger';
+                            } else if (item.status === 'running') {
+                                statusClass = 'text-warning';
+                            }
+                            
+                            row.innerHTML = `
+                                <td>${date}</td>
+                                <td class="${statusClass}">${item.status}</td>
+                                <td>${formatDuration(item.duration)}</td>
+                                <td>${item.items_collected || 0}</td>
+                                <td>${item.details || '-'}</td>
+                            `;
+                            historyTableBody.appendChild(row);
+                        });
+                    }
+                    
+                    document.getElementById('status-loading').classList.add('hidden');
+                    document.getElementById('status-content').classList.remove('hidden');
+                })
+                .catch(error => {
+                    document.getElementById('status-loading').classList.add('hidden');
+                    document.getElementById('status-error').textContent = error.message;
+                    document.getElementById('status-error').classList.remove('hidden');
+                    console.error('Error fetching collection status:', error);
+                });
+        }
+        
+        // Fetch configuration
+        function fetchConfiguration() {
+            fetch('/api/v2/configuration')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch configuration');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Update general config form
+                    document.getElementById('kubeconfig-path').value = data.kubeconfig_path || '';
+                    document.getElementById('parallel-jobs').value = data.parallel_jobs || 4;
+                    document.getElementById('enable-cloud-collection').checked = data.enable_cloud_collection || false;
+                    document.getElementById('enable-ssh-collection').checked = data.enable_ssh_collection || false;
+                    
+                    // Update advanced config form
+                    document.getElementById('collection-timeout').value = data.collection_timeout || 60;
+                    document.getElementById('retry-attempts').value = data.retry_attempts || 2;
+                    document.getElementById('retry-delay').value = data.retry_delay || 2;
+                    document.getElementById('log-level').value = data.log_level || 'INFO';
+                })
+                .catch(error => {
+                    console.error('Error fetching configuration:', error);
+                    alert('Error fetching configuration: ' + error.message);
+                });
+        }
+        
+        // Format interval
+        function formatInterval(seconds) {
+            if (!seconds) return 'Unknown';
+            
+            if (seconds < 60) {
+                return seconds + ' seconds';
+            } else if (seconds < 3600) {
+                return Math.floor(seconds / 60) + ' minutes';
+            } else if (seconds < 86400) {
+                return Math.floor(seconds / 3600) + ' hours';
+            } else {
+                return Math.floor(seconds / 86400) + ' days';
+            }
+        }
+        
+        // Format duration
+        function formatDuration(seconds) {
+            if (!seconds) return '0s';
+            
+            if (seconds < 60) {
+                return seconds + 's';
+            } else if (seconds < 3600) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                return minutes + 'm ' + remainingSeconds + 's';
+            } else {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                return hours + 'h ' + minutes + 'm';
+            }
+        }
+        
+        // Initial fetch
+        fetchCollectionStatus();
+        fetchConfiguration();
+        
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', fetchCollectionStatus);
+        
+        // Run collection button
+        document.getElementById('run-collection-btn').addEventListener('click', function() {
+            this.disabled = true;
+            this.textContent = 'Running...';
+            
+            fetch('/api/v2/run-collection', { method: 'POST' })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Collection started successfully!');
+                        setTimeout(() => {
+                            fetchCollectionStatus();
+                        }, 2000);
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error starting collection:', error);
+                    alert('Error starting collection: ' + error.message);
+                })
+                .finally(() => {
+                    this.disabled = false;
+                    this.textContent = 'Run Collection Now';
+                });
+        });
+        
+        // Update interval button
+        document.getElementById('update-interval-btn').addEventListener('click', function() {
+            const interval = document.getElementById('interval-select').value;
+            
+            fetch('/api/v2/update-interval', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ interval: parseInt(interval) })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Collection interval updated successfully!');
+                    fetchCollectionStatus();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating interval:', error);
+                alert('Error updating interval: ' + error.message);
+            });
+        });
+        
+        // Save general config button
+        document.getElementById('save-general-config-btn').addEventListener('click', function() {
+            const form = document.getElementById('general-config-form');
+            const formData = new FormData(form);
+            
+            const config = {
+                kubeconfig_path: formData.get('kubeconfig_path'),
+                parallel_jobs: parseInt(formData.get('parallel_jobs')),
+                enable_cloud_collection: formData.get('enable_cloud_collection') === 'on',
+                enable_ssh_collection: formData.get('enable_ssh_collection') === 'on'
+            };
+            
+            saveConfiguration(config);
+        });
+        
+        // Save advanced config button
+        document.getElementById('save-advanced-config-btn').addEventListener('click', function() {
+            const form = document.getElementById('advanced-config-form');
+            const formData = new FormData(form);
+            
+            const config = {
+                collection_timeout: parseInt(formData.get('collection_timeout')),
+                retry_attempts: parseInt(formData.get('retry_attempts')),
+                retry_delay: parseInt(formData.get('retry_delay')),
+                log_level: formData.get('log_level')
+            };
+            
+            saveConfiguration(config);
+        });
+        
+        // Save configuration function
+        function saveConfiguration(config) {
+            fetch('/api/v2/configuration', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(config)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Configuration saved successfully!');
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error saving configuration:', error);
+                alert('Error saving configuration: ' + error.message);
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Cluster Overview{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Cluster Overview</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Cluster Information</h2>
+            <div class="card-actions">
+                <button id="refresh-btn" class="btn btn-primary btn-sm">Refresh</button>
+                <button id="export-btn" class="btn btn-secondary btn-sm">Export</button>
+            </div>
+        </div>
+        <div class="loading" id="cluster-info-loading">Loading cluster information...</div>
+        <div class="error hidden" id="cluster-info-error"></div>
+        <div class="hidden" id="cluster-info-content">
+            <div class="tabs">
+                <div class="tab active" data-tab="summary">Summary</div>
+                <div class="tab" data-tab="version">Version</div>
+                <div class="tab" data-tab="infrastructure">Infrastructure</div>
+                <div class="tab" data-tab="raw">Raw Data</div>
+            </div>
+            
+            <div class="tab-content active" id="summary-tab">
+                <div class="info-card">
+                    <div class="info-item">
+                        <span class="label">OpenShift Version:</span>
+                        <span class="value" id="openshift-version">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Cluster ID:</span>
+                        <span class="value" id="cluster-id">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Infrastructure Name:</span>
+                        <span class="value" id="infra-name">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">API Server URL:</span>
+                        <span class="value" id="api-server-url">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Platform:</span>
+                        <span class="value" id="platform">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Control Plane Topology:</span>
+                        <span class="value" id="control-plane-topology">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Infrastructure Topology:</span>
+                        <span class="value" id="infra-topology">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Installation Date:</span>
+                        <span class="value" id="install-date">-</span>
+                    </div>
+                </div>
+                
+                <div class="grid grid-3 mt-4">
+                    <div class="card">
+                        <h3>Cluster Status</h3>
+                        <div class="info-item">
+                            <span class="label">Available:</span>
+                            <span class="value" id="cluster-available">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Progressing:</span>
+                            <span class="value" id="cluster-progressing">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Degraded:</span>
+                            <span class="value" id="cluster-degraded">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>Network</h3>
+                        <div class="info-item">
+                            <span class="label">Network Type:</span>
+                            <span class="value" id="network-type">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Service Network:</span>
+                            <span class="value" id="service-network">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Cluster Network:</span>
+                            <span class="value" id="cluster-network">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <h3>OC Client</h3>
+                        <div class="info-item">
+                            <span class="label">Client Version:</span>
+                            <span class="value" id="client-version">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Server Version:</span>
+                            <span class="value" id="server-version">-</span>
+                        </div>
+                        <div class="info-item">
+                            <span class="label">Kubernetes Version:</span>
+                            <span class="value" id="kubernetes-version">-</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content" id="version-tab">
+                <h3>Cluster Version Details</h3>
+                <pre id="version-yaml" class="code-block"></pre>
+            </div>
+            
+            <div class="tab-content" id="infrastructure-tab">
+                <h3>Infrastructure Details</h3>
+                <pre id="infrastructure-yaml" class="code-block"></pre>
+            </div>
+            
+            <div class="tab-content" id="raw-tab">
+                <h3>Raw Cluster Information</h3>
+                <pre id="raw-data" class="code-block"></pre>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tab functionality
+        document.querySelectorAll('.tab').forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                document.querySelectorAll('.tab').forEach(function(t) {
+                    t.classList.remove('active');
+                });
+                
+                // Hide all tab content
+                document.querySelectorAll('.tab-content').forEach(function(content) {
+                    content.classList.remove('active');
+                });
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding tab content
+                const tabId = this.getAttribute('data-tab');
+                document.getElementById(tabId + '-tab').classList.add('active');
+            });
+        });
+        
+        // Fetch cluster information
+        function fetchClusterInfo() {
+            document.getElementById('cluster-info-loading').classList.remove('hidden');
+            document.getElementById('cluster-info-content').classList.add('hidden');
+            document.getElementById('cluster-info-error').classList.add('hidden');
+            
+            Promise.all([
+                fetch('/api/v2/cluster').then(res => res.json()),
+                fetch('/api/v2/network').then(res => res.json())
+            ])
+            .then(([clusterData, networkData]) => {
+                const summary = clusterData.summary || {};
+                const infraYaml = clusterData.infrastructure_yaml || {};
+                const ocVersion = clusterData.oc_version || {};
+                const networkSummary = networkData.summary || {};
+                
+                // Summary tab
+                document.getElementById('openshift-version').textContent = summary.openshiftVersion || 'Unknown';
+                document.getElementById('cluster-id').textContent = summary.clusterID || 'Unknown';
+                document.getElementById('infra-name').textContent = summary.infraName || 'Unknown';
+                document.getElementById('api-server-url').textContent = summary.apiServerURL || 'Unknown';
+                document.getElementById('platform').textContent = summary.platform || 'Unknown';
+                document.getElementById('control-plane-topology').textContent = infraYaml.status?.controlPlaneTopology || 'Unknown';
+                document.getElementById('infra-topology').textContent = infraYaml.status?.infrastructureTopology || 'Unknown';
+                document.getElementById('install-date').textContent = new Date(summary.installDateApprox || '').toLocaleString();
+                
+                // Cluster Status
+                document.getElementById('cluster-available').textContent = summary.available || 'Unknown';
+                document.getElementById('cluster-progressing').textContent = summary.progressing ? 'Yes' : 'No';
+                document.getElementById('cluster-degraded').textContent = summary.degraded ? 'Yes' : 'No';
+                
+                // Network
+                document.getElementById('network-type').textContent = networkSummary.networkType || 'Unknown';
+                document.getElementById('service-network').textContent = Array.isArray(networkSummary.serviceNetwork) ? 
+                    networkSummary.serviceNetwork.join(', ') : 'Unknown';
+                document.getElementById('cluster-network').textContent = Array.isArray(networkSummary.clusterNetwork) ? 
+                    networkSummary.clusterNetwork.map(n => `${n.cidr} (${n.hostPrefix})`).join(', ') : 'Unknown';
+                
+                // OC Client
+                document.getElementById('client-version').textContent = ocVersion.clientVersion?.gitVersion || 'Unknown';
+                document.getElementById('server-version').textContent = ocVersion.serverVersion?.gitVersion || 'Unknown';
+                document.getElementById('kubernetes-version').textContent = ocVersion.serverVersion?.gitVersion || 'Unknown';
+                
+                // Version tab
+                document.getElementById('version-yaml').textContent = JSON.stringify(clusterData.cluster_version_yaml, null, 2);
+                
+                // Infrastructure tab
+                document.getElementById('infrastructure-yaml').textContent = JSON.stringify(infraYaml, null, 2);
+                
+                // Raw tab
+                document.getElementById('raw-data').textContent = JSON.stringify(clusterData, null, 2);
+                
+                document.getElementById('cluster-info-loading').classList.add('hidden');
+                document.getElementById('cluster-info-content').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('cluster-info-loading').classList.add('hidden');
+                document.getElementById('cluster-info-error').textContent = error.message;
+                document.getElementById('cluster-info-error').classList.remove('hidden');
+                console.error('Error fetching cluster info:', error);
+            });
+        }
+        
+        // Initial fetch
+        fetchClusterInfo();
+        
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', fetchClusterInfo);
+        
+        // Export button
+        document.getElementById('export-btn').addEventListener('click', function() {
+            window.location.href = '/api/v2/export/cluster?format=json';
+        });
+    });
+</script>
+{% endblock %}

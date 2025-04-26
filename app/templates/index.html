@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <h1>OpenShift Cluster Documentation</h1>
+    
+    <div class="cluster-overview">
+        <h2>Cluster Overview</h2>
+        <div class="loading" id="cluster-info-loading">Loading cluster information...</div>
+        <div class="error hidden" id="cluster-info-error"></div>
+        <div class="info-card hidden" id="cluster-info">
+            <div class="info-item">
+                <span class="label">Version:</span>
+                <span class="value" id="cluster-version">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Platform:</span>
+                <span class="value" id="cluster-platform">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Infrastructure Name:</span>
+                <span class="value" id="infra-name">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Control Plane Topology:</span>
+                <span class="value" id="control-plane-topology">-</span>
+            </div>
+            <div class="info-item">
+                <span class="label">Infrastructure Topology:</span>
+                <span class="value" id="infra-topology">-</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="nodes-overview">
+        <h2>Nodes Overview</h2>
+        <div class="loading" id="nodes-info-loading">Loading nodes information...</div>
+        <div class="error hidden" id="nodes-info-error"></div>
+        <div class="table-container hidden" id="nodes-table-container">
+            <table class="data-table" id="nodes-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>OS</th>
+                        <th>Architecture</th>
+                        <th>CPU</th>
+                        <th>Memory</th>
+                    </tr>
+                </thead>
+                <tbody id="nodes-table-body">
+                    <!-- Nodes will be populated here by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch cluster information
+        fetch('/api/cluster')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch cluster information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('cluster-version').textContent = data.version || 'Unknown';
+                document.getElementById('cluster-platform').textContent = data.platform || 'Unknown';
+                document.getElementById('infra-name').textContent = data.infrastructure_name || 'Unknown';
+                document.getElementById('control-plane-topology').textContent = data.control_plane_topology || 'Unknown';
+                document.getElementById('infra-topology').textContent = data.infrastructure_topology || 'Unknown';
+                
+                document.getElementById('cluster-info-loading').classList.add('hidden');
+                document.getElementById('cluster-info').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('cluster-info-loading').classList.add('hidden');
+                document.getElementById('cluster-info-error').textContent = error.message;
+                document.getElementById('cluster-info-error').classList.remove('hidden');
+                console.error('Error fetching cluster info:', error);
+            });
+
+        // Fetch nodes information
+        fetch('/api/nodes')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch nodes information');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const tableBody = document.getElementById('nodes-table-body');
+                
+                if (data.length === 0) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = '<td colspan="7">No nodes found</td>';
+                    tableBody.appendChild(row);
+                } else {
+                    data.forEach(node => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${node.name || 'Unknown'}</td>
+                            <td>${node.roles ? 'Master' : 'Worker'}</td>
+                            <td>${node.status || 'Unknown'}</td>
+                            <td>${node.os_image || 'Unknown'}</td>
+                            <td>${node.architecture || 'Unknown'}</td>
+                            <td>${node.capacity?.cpu || 'Unknown'}</td>
+                            <td>${node.capacity?.memory || 'Unknown'}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                
+                document.getElementById('nodes-info-loading').classList.add('hidden');
+                document.getElementById('nodes-table-container').classList.remove('hidden');
+            })
+            .catch(error => {
+                document.getElementById('nodes-info-loading').classList.add('hidden');
+                document.getElementById('nodes-info-error').textContent = error.message;
+                document.getElementById('nodes-info-error').classList.remove('hidden');
+                console.error('Error fetching nodes info:', error);
+            });
+    });
+</script>
+{% endblock %}

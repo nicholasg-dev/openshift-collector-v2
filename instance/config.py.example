@@ -1,0 +1,31 @@
+"""
+Instance-specific configuration.
+This file contains sensitive information and should NOT be version controlled.
+Copy this file to config.py and edit as needed.
+"""
+
+# Path to your OpenShift kubeconfig file
+# KUBECONFIG_PATH = '/path/to/your/kubeconfig'
+
+# Secret key for session management (generate a strong random key for production)
+# SECRET_KEY = 'your-secret-key-here'
+
+# Cloud provider credentials (if cloud collection is enabled)
+# AWS_ACCESS_KEY_ID = 'your-aws-access-key'
+# AWS_SECRET_ACCESS_KEY = 'your-aws-secret-key'
+# AWS_REGION = 'us-east-1'
+
+# Azure credentials
+# AZURE_SUBSCRIPTION_ID = 'your-subscription-id'
+# AZURE_TENANT_ID = 'your-tenant-id'
+# AZURE_CLIENT_ID = 'your-client-id'
+# AZURE_CLIENT_SECRET = 'your-client-secret'
+
+# GCP credentials
+# GCP_PROJECT_ID = 'your-project-id'
+# GCP_CREDENTIALS_FILE = '/path/to/your/gcp-credentials.json'
+
+# SSH settings (if SSH collection is enabled)
+# SSH_PRIVATE_KEY_PATH = '/path/to/your/private-key'
+# SSH_USERNAME = 'username'
+# SSH_KNOWN_HOSTS_PATH = '/path/to/your/known_hosts'

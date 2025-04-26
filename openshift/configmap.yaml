@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openshift-collector-config
+  labels:
+    app: openshift-collector
+data:
+  collection-interval: "3600"
+  parallel-jobs: "4"
+  log-level: "INFO"
+  namespaces-to-collect: "default,openshift-monitoring,openshift-operators"

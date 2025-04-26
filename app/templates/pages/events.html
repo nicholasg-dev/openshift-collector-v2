@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Events{% endblock %}
+{% block content %}
+<h1>Events</h1>
+{% if events and events.recent_events_list %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Namespace</th><th>Type</th><th>Reason</th><th>Object</th><th>Message</th><th>Last Seen</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for event in events.recent_events_list %}
+        <tr>
+          <td>{{ event.NAMESPACE }}</td>
+          <td>{{ event.TYPE }}</td>
+          <td>{{ event.REASON }}</td>
+          <td>{{ event.OBJECT }}</td>
+          <td>{{ event.MESSAGE }}</td>
+          <td>{{ event.LASTSEEN }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No event data available.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Nodes{% endblock %}
+{% block content %}
+<h1>Nodes</h1>
+{% if nodes and nodes.list %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        {% for key in nodes.list[0].keys() %}
+          <th>{{ key }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for node in nodes.list %}
+        <tr>
+          {% for value in node.values() %}
+            <td>{{ value }}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+{% else %}
+  <p>No node data available.</p>
+{% endif %}
+{% endblock %}

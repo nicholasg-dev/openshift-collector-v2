@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Namespaces{% endblock %}
+{% block content %}
+<h1>Namespaces</h1>
+{% if namespaces %}
+  <ul>
+    {% for ns in namespaces %}
+      <li>{{ ns }}</li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <p>No namespaces found.</p>
+{% endif %}
+{% endblock %}

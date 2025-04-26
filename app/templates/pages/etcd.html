@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}ETCD{% endblock %}
+{% block content %}
+<h1>ETCD</h1>
+{% if etcd %}
+  {% if etcd.health_raw %}
+    <h2>Health</h2>
+    <pre>{{ etcd.health_raw }}</pre>
+  {% else %}
+    <h2>Health</h2>
+    <p>No health data available.</p>
+  {% endif %}
+  {% if etcd.members_raw %}
+    <h2>Members</h2>
+    <pre>{{ etcd.members_raw }}</pre>
+  {% else %}
+    <h2>Members</h2>
+    <p>No member data available.</p>
+  {% endif %}
+{% else %}
+  <p>No ETCD data available.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Storage{% endblock %}
+{% block content %}
+<h1>Storage</h1>
+{% if storage %}
+  {% if storage.storageclasses_yaml %}
+    <h2>Storage Classes</h2>
+    <pre>{{ storage.storageclasses_yaml | tojson(indent=2) }}</pre>
+  {% endif %}
+  {% if storage.persistentvolumes_yaml %}
+    <h2>Persistent Volumes</h2>
+    <pre>{{ storage.persistentvolumes_yaml | tojson(indent=2) }}</pre>
+  {% endif %}
+  {% if storage.pvc_summary_raw %}
+    <h2>PVC Summary</h2>
+    <pre>{{ storage.pvc_summary_raw }}</pre>
+  {% else %}
+    <h2>PVC Summary</h2>
+    <pre>No PVC summary</pre>
+  {% endif %}
+{% else %}
+  <p>No storage data available.</p>
+{% endif %}
+{% endblock %}

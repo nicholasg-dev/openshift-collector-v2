@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Export - OpenShift Cluster Documentation{% endblock %}
+
+{% block content %}
+<section>
+    <h1>Export Cluster Documentation</h1>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Export Options</h2>
+        </div>
+        
+        <div class="export-options">
+            <div class="export-option" id="export-pdf">
+                <i class="icon">📄</i>
+                <h3>PDF Report</h3>
+                <p>Export a comprehensive PDF report with all cluster information</p>
+            </div>
+            
+            <div class="export-option" id="export-html">
+                <i class="icon">🌐</i>
+                <h3>HTML Report</h3>
+                <p>Export a self-contained HTML report that can be viewed in any browser</p>
+            </div>
+            
+            <div class="export-option" id="export-json">
+                <i class="icon">{ }</i>
+                <h3>JSON Data</h3>
+                <p>Export raw JSON data for all collected information</p>
+            </div>
+        </div>
+        
+        <div class="card mt-4">
+            <h3>Customize Export</h3>
+            <form id="export-form">
+                <div class="grid grid-2">
+                    <div>
+                        <h4>Include Sections</h4>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="cluster" checked> Cluster Overview
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="nodes" checked> Nodes
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="operators" checked> Operators
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="etcd" checked> ETCD
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="namespaces" checked> Namespaces
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="storage" checked> Storage
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="network" checked> Network
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="security" checked> Security
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="metrics" checked> Metrics
+                            </label>
+                        </div>
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="sections" value="events" checked> Events
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h4>Options</h4>
+                        <div class="form-group">
+                            <label class="form-label" for="report-title">Report Title</label>
+                            <input type="text" id="report-title" name="title" class="form-control" value="OpenShift Cluster Documentation">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="include-timestamp">Include Timestamp</label>
+                            <select id="include-timestamp" name="timestamp" class="form-control">
+                                <option value="yes" selected>Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="include-charts">Include Charts</label>
+                            <select id="include-charts" name="charts" class="form-control">
+                                <option value="yes" selected>Yes</option>
+                                <option value="no">No</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="include-raw-data">Include Raw Data</label>
+                            <select id="include-raw-data" name="raw_data" class="form-control">
+                                <option value="yes">Yes</option>
+                                <option value="no" selected>No</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-group mt-4">
+                    <button type="button" id="generate-report-btn" class="btn btn-primary">Generate Report</button>
+                    <span id="export-status" class="ml-3"></span>
+                </div>
+            </form>
+        </div>
+        
+        <div class="card mt-4">
+            <h3>Recent Exports</h3>
+            <div class="loading" id="exports-loading">Loading recent exports...</div>
+            <div class="error hidden" id="exports-error"></div>
+            <div class="table-container hidden" id="exports-table-container">
+                <table class="data-table" id="exports-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Sections</th>
+                            <th>Size</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exports-table-body">
+                        <!-- Exports will be populated here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Export option click handlers
+        document.getElementById('export-pdf').addEventListener('click', function() {
+            exportReport('pdf');
+        });
+        
+        document.getElementById('export-html').addEventListener('click', function() {
+            exportReport('html');
+        });
+        
+        document.getElementById('export-json').addEventListener('click', function() {
+            exportReport('json');
+        });
+        
+        // Generate report button
+        document.getElementById('generate-report-btn').addEventListener('click', function() {
+            const form = document.getElementById('export-form');
+            const formData = new FormData(form);
+            
+            // Get selected sections
+            const sections = [];
+            document.querySelectorAll('input[name="sections"]:checked').forEach(function(checkbox) {
+                sections.push(checkbox.value);
+            });
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            params.append('format', 'pdf');
+            params.append('sections', sections.join(','));
+            params.append('title', formData.get('title'));
+            params.append('timestamp', formData.get('timestamp'));
+            params.append('charts', formData.get('charts'));
+            params.append('raw_data', formData.get('raw_data'));
+            
+            // Show status
+            const statusEl = document.getElementById('export-status');
+            statusEl.textContent = 'Generating report...';
+            statusEl.className = 'ml-3';
+            
+            // Request the report
+            fetch('/api/v2/export/report?' + params.toString())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to generate report');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        statusEl.textContent = 'Report generated successfully!';
+                        statusEl.className = 'ml-3 text-success';
+                        
+                        // Refresh recent exports
+                        fetchRecentExports();
+                        
+                        // Download the file
+                        window.location.href = data.download_url;
+                    } else {
+                        statusEl.textContent = 'Error: ' + (data.error || 'Unknown error');
+                        statusEl.className = 'ml-3 text-danger';
+                    }
+                })
+                .catch(error => {
+                    statusEl.textContent = 'Error: ' + error.message;
+                    statusEl.className = 'ml-3 text-danger';
+                    console.error('Error generating report:', error);
+                });
+        });
+        
+        // Export report function
+        function exportReport(format) {
+            // Get all sections by default
+            const sections = [];
+            document.querySelectorAll('input[name="sections"]').forEach(function(checkbox) {
+                sections.push(checkbox.value);
+            });
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            params.append('format', format);
+            params.append('sections', sections.join(','));
+            params.append('title', document.getElementById('report-title').value);
+            params.append('timestamp', 'yes');
+            params.append('charts', 'yes');
+            params.append('raw_data', format === 'json' ? 'yes' : 'no');
+            
+            // Request the report
+            window.location.href = '/api/v2/export/report?' + params.toString();
+        }
+        
+        // Fetch recent exports
+        function fetchRecentExports() {
+            document.getElementById('exports-loading').classList.remove('hidden');
+            document.getElementById('exports-table-container').classList.add('hidden');
+            document.getElementById('exports-error').classList.add('hidden');
+            
+            fetch('/api/v2/exports')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch recent exports');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    const tableBody = document.getElementById('exports-table-body');
+                    tableBody.innerHTML = '';
+                    
+                    if (!data.exports || data.exports.length === 0) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = '<td colspan="5">No recent exports found</td>';
+                        tableBody.appendChild(row);
+                    } else {
+                        data.exports.forEach(export_item => {
+                            const row = document.createElement('tr');
+                            const date = new Date(export_item.date).toLocaleString();
+                            
+                            row.innerHTML = `
+                                <td>${date}</td>
+                                <td>${export_item.type.toUpperCase()}</td>
+                                <td>${export_item.sections.join(', ')}</td>
+                                <td>${formatFileSize(export_item.size)}</td>
+                                <td>
+                                    <a href="${export_item.url}" class="btn btn-primary btn-sm">Download</a>
+                                    <button class="btn btn-danger btn-sm delete-export" data-id="${export_item.id}">Delete</button>
+                                </td>
+                            `;
+                            tableBody.appendChild(row);
+                        });
+                        
+                        // Add delete handlers
+                        document.querySelectorAll('.delete-export').forEach(function(button) {
+                            button.addEventListener('click', function() {
+                                const exportId = this.getAttribute('data-id');
+                                deleteExport(exportId);
+                            });
+                        });
+                    }
+                    
+                    document.getElementById('exports-loading').classList.add('hidden');
+                    document.getElementById('exports-table-container').classList.remove('hidden');
+                })
+                .catch(error => {
+                    document.getElementById('exports-loading').classList.add('hidden');
+                    document.getElementById('exports-error').textContent = error.message;
+                    document.getElementById('exports-error').classList.remove('hidden');
+                    console.error('Error fetching recent exports:', error);
+                });
+        }
+        
+        // Delete export function
+        function deleteExport(exportId) {
+            if (confirm('Are you sure you want to delete this export?')) {
+                fetch('/api/v2/exports/' + exportId, {
+                    method: 'DELETE'
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Failed to delete export');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        // Refresh the list
+                        fetchRecentExports();
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    alert('Error: ' + error.message);
+                    console.error('Error deleting export:', error);
+                });
+            }
+        }
+        
+        // Format file size
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        // Initial fetch of recent exports
+        fetchRecentExports();
+    });
+</script>
+{% endblock %}

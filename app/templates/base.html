@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OpenShift Cluster Documentation{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/chart.min.js') }}"></script>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav>
+            <div class="logo">OpenShift Collector v3</div>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('main.index') }}">Dashboard</a></li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle">Cluster</a>
+                    <div class="dropdown-menu">
+                        <a href="{{ url_for('main.cluster_overview') }}">Overview</a>
+                        <a href="{{ url_for('main.operators_view') }}">Operators</a>
+                        <a href="{{ url_for('main.etcd_view') }}">ETCD</a>
+                        <a href="{{ url_for('main.nodes_view') }}">Nodes</a>
+                    </div>
+                </li>
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle">Resources</a>
+                    <div class="dropdown-menu">
+                        <a href="{{ url_for('main.namespaces_view') }}">Namespaces</a>
+                        <a href="{{ url_for('main.storage_view') }}">Storage</a>
+                        <a href="{{ url_for('main.network_view') }}">Network</a>
+                        <a href="{{ url_for('main.security_view') }}">Security</a>
+                    </div>
+                </li>
+                <li><a href="{{ url_for('main.metrics_view') }}">Metrics</a></li>
+                <li><a href="{{ url_for('main.events_view') }}">Events</a></li>
+                <li><a href="{{ url_for('main.collection_status') }}">Collection Status</a></li>
+                <li><a href="{{ url_for('main.export_view') }}">Export</a></li>
+            </ul>
+            <div class="menu-toggle">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="container">
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 OpenShift Collector v3</p>
+            <p>Last collection: <span id="last-collection-time">Unknown</span></p>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        document.querySelector('.menu-toggle').addEventListener('click', function() {
+            document.querySelector('.nav-links').classList.toggle('active');
+        });
+
+        // Dropdown functionality
+        document.querySelectorAll('.dropdown-toggle').forEach(function(dropdown) {
+            dropdown.addEventListener('click', function(e) {
+                e.preventDefault();
+                this.parentNode.classList.toggle('active');
+            });
+        });
+
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown').forEach(function(dropdown) {
+                    dropdown.classList.remove('active');
+                });
+            }
+        });
+
+        // Fetch last collection time
+        fetch('/api/v2/collection-status')
+            .then(response => response.json())
+            .then(data => {
+                if (data.last_collection) {
+                    document.getElementById('last-collection-time').textContent =
+                        new Date(data.last_collection).toLocaleString();
+                }
+            })
+            .catch(error => console.error('Error fetching collection status:', error));
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
